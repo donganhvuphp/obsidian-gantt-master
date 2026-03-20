@@ -1,0 +1,10 @@
+{
+	"id": "gantt-master",
+	"name": "Gantt Master",
+	"version": "0.1.0",
+	"minAppVersion": "1.10.0",
+	"description": "Timeline, Kanban, and Table views for Obsidian Bases. Drag, resize, and edit task data directly from any view.",
+	"author": "donganhvu",
+	"authorUrl": "https://github.com/vudonganh",
+	"isDesktopOnly": false
+}
