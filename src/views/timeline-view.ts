@@ -147,6 +147,7 @@ export class TimelineView extends BasesView {
 	private _boundMouseMove!: (e: MouseEvent) => void;
 	private _boundMouseUp!: (e: MouseEvent) => void;
 	private _boundKeyDown!: (e: KeyboardEvent) => void;
+	private _activePopoverDismiss: (() => void) | null = null;
 
 	private onResizeDebounce = debounce(() => this.render(), 100, true);
 	private onDataDebounce = debounce(() => this.render(), 300, false);
@@ -182,6 +183,7 @@ export class TimelineView extends BasesView {
 		document.removeEventListener('mouseup', this._boundMouseUp);
 		this.containerEl.removeEventListener('keydown', this._boundKeyDown);
 		this._dragTooltipEl?.remove();
+		if (this._activePopoverDismiss) this._activePopoverDismiss();
 		this.containerEl.empty();
 	}
 
@@ -255,8 +257,8 @@ export class TimelineView extends BasesView {
 		const labelColWidth = this.getNumericConfig('labelColWidth', LABEL_COLUMN_WIDTH_PX, LABEL_COLUMN_MIN_PX, LABEL_COLUMN_MAX_PX);
 
 		// Read the groupBy property name from the raw Bases config
-		const rawConfig = this.config as any;
-		const groupByProp: string | null = rawConfig?.groupBy?.property ?? null;
+		const rawGroupBy = this.config.get('groupBy') as { property?: string } | null;
+		const groupByProp: string | null = rawGroupBy?.property ?? null;
 
 		// A property is writable only if it references a frontmatter field (note.*)
 		// Formula and file properties are computed/read-only.
@@ -450,7 +452,7 @@ export class TimelineView extends BasesView {
 			} else {
 				try {
 					this.config.set('colorBy', JSON.parse(val));
-				} catch { /* ignore */ }
+				} catch (e) { console.warn("[Timeline] Invalid colorBy JSON:", e); }
 			}
 			this.render();
 		});
@@ -1420,7 +1422,7 @@ export class TimelineView extends BasesView {
 					const { path, fromGroup } = JSON.parse(data) as { path: string; fromGroup: string };
 					if (path === entry.file.path) return; // dropped onto itself
 					void this._dropToGroup(path, fromGroup, currentGroupLabel!, config.groupByProp);
-				} catch { /* ignore */ }
+				} catch (e) { console.warn("[Timeline] Invalid colorBy JSON:", e); }
 			});
 		}
 
@@ -1662,9 +1664,11 @@ export class TimelineView extends BasesView {
 			if (e.key === 'Escape') popover.remove();
 		});
 
+		if (this._activePopoverDismiss) this._activePopoverDismiss();
 		const dismiss = (e: MouseEvent) => {
-			if (!popover.contains(e.target as Node)) { popover.remove(); document.removeEventListener('mousedown', dismiss); }
+			if (!popover.contains(e.target as Node)) { popover.remove(); document.removeEventListener('mousedown', dismiss); this._activePopoverDismiss = null; }
 		};
+		this._activePopoverDismiss = () => { popover.remove(); document.removeEventListener('mousedown', dismiss); this._activePopoverDismiss = null; };
 		setTimeout(() => document.addEventListener('mousedown', dismiss), 0);
 		input.focus();
 	}
@@ -1862,8 +1866,12 @@ export class TimelineView extends BasesView {
 		if (existing) existing.remove();
 
 		const pop = document.body.createDiv({ attr: { id: 'tl-edit-dates-popover' }, cls: 'bases-timeline-jump-popover' });
-		pop.style.top  = `${e.clientY + 6}px`;
-		pop.style.left = `${e.clientX}px`;
+		// Position popover clamped to viewport
+		const popW = 280, popH = 120;
+		const clampedX = Math.min(e.clientX, window.innerWidth - popW - 8);
+		const clampedY = Math.min(e.clientY + 6, window.innerHeight - popH - 8);
+		pop.style.top  = `${Math.max(4, clampedY)}px`;
+		pop.style.left = `${Math.max(4, clampedX)}px`;
 
 		pop.createEl('label', { text: 'Start', cls: 'tl-pop-label' });
 		const startInput = pop.createEl('input', { type: 'date' });
@@ -1896,9 +1904,11 @@ export class TimelineView extends BasesView {
 		startInput.addEventListener('mousedown', e2 => e2.stopPropagation());
 		endInput.addEventListener('mousedown',   e2 => e2.stopPropagation());
 
+		if (this._activePopoverDismiss) this._activePopoverDismiss();
 		const dismiss = (ev: MouseEvent) => {
-			if (!pop.contains(ev.target as Node)) { pop.remove(); document.removeEventListener('mousedown', dismiss); }
+			if (!pop.contains(ev.target as Node)) { pop.remove(); document.removeEventListener('mousedown', dismiss); this._activePopoverDismiss = null; }
 		};
+		this._activePopoverDismiss = () => { pop.remove(); document.removeEventListener('mousedown', dismiss); this._activePopoverDismiss = null; };
 		setTimeout(() => document.addEventListener('mousedown', dismiss), 0);
 	}
 
@@ -2132,7 +2142,7 @@ export class TimelineView extends BasesView {
 					fm[s.startPropKey] = after.start;
 					fm[s.endPropKey]   = after.end;
 				});
-			} catch (err) { console.error('[Timeline] Failed to update frontmatter:', err); }
+			} catch (err) { console.error('[Timeline] Failed to update frontmatter:', err); new Notice('Failed to save date changes'); }
 		}
 
 		// Bulk-move other selected bars (only for 'move' type)

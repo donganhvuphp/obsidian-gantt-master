@@ -74,8 +74,8 @@ export class TableView extends BasesView {
 	}
 
 	private getColorMap(): Record<string, string> {
-		const raw = (this.config as any)?.colorMap;
-		if (raw && typeof raw === 'object') return raw;
+		const raw = this.config.get('colorMap');
+		if (raw && typeof raw === 'object') return raw as Record<string, string>;
 		return {};
 	}
 

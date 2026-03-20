@@ -89,8 +89,8 @@ export class KanbanView extends BasesView {
 	}
 
 	private getColorMap(): Record<string, string> {
-		const raw = (this.config as any)?.colorMap;
-		if (raw && typeof raw === 'object') return raw;
+		const raw = this.config.get('colorMap');
+		if (raw && typeof raw === 'object') return raw as Record<string, string>;
 		return {};
 	}
 
@@ -178,6 +178,9 @@ export class KanbanView extends BasesView {
 				}
 			});
 
+			if (colEntries.length === 0) {
+				cardsEl.createDiv({ cls: 'multiview-kanban-empty-col', text: 'No items' });
+			}
 			for (const entry of colEntries) {
 				this.renderCard(cardsEl, entry, config);
 			}
@@ -243,7 +246,7 @@ export class KanbanView extends BasesView {
 		// Write back to frontmatter
 		const file = entry.file;
 		if (file) {
-			this.app.fileManager.processFrontMatter(file, (fm: any) => {
+			this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
 				// Extract the property name from BasesPropertyId (e.g., "note.status" -> "status")
 				const propName = String(groupByProp).replace(/^note\./, '');
 				fm[propName] = newValue;

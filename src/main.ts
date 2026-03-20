@@ -5,10 +5,12 @@ import { TableView } from './views/table-view';
 
 interface GanttMasterPluginSettings {
 	defaultWeekStart: 'monday' | 'sunday';
+	baseFolder: string;
 }
 
 const DEFAULT_SETTINGS: GanttMasterPluginSettings = {
 	defaultWeekStart: 'monday',
+	baseFolder: '',
 };
 
 export default class GanttMasterPlugin extends Plugin {
@@ -42,6 +44,48 @@ export default class GanttMasterPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new GanttMasterSettingTab(this.app, this));
+
+		// Ribbon icon to quickly create a new .base file
+		this.addRibbonIcon('gantt-chart', 'Create new Gantt base', async () => {
+			await this.createNewBase();
+		});
+	}
+
+	async createNewBase(): Promise<void> {
+		const folder = this.settings.baseFolder.trim();
+		const dir = folder || '';
+		if (dir && !await this.app.vault.adapter.exists(dir)) {
+			await this.app.vault.createFolder(dir);
+		}
+
+		// Generate unique name
+		const today = new Date().toISOString().slice(0, 10);
+		let name = `Project ${today}`;
+		let path = normalizePath(dir ? `${dir}/${name}.base` : `${name}.base`);
+		let i = 1;
+		while (await this.app.vault.adapter.exists(path)) {
+			name = `Project ${today} (${i++})`;
+			path = normalizePath(dir ? `${dir}/${name}.base` : `${name}.base`);
+		}
+
+		const content = `views:
+  - type: timeline
+    name: Timeline
+    startDate: note.start_date
+    endDate: note.end_date
+    timeScale: day
+    zoom: 1
+  - type: kanban
+    name: Kanban
+  - type: table-view
+    name: Table
+`;
+		await this.app.vault.create(path, content);
+		const file = this.app.vault.getFileByPath(path);
+		if (file) {
+			await this.app.workspace.getLeaf(false).openFile(file);
+		}
+		new Notice(`Created ${name}.base`);
 	}
 
 	async createSampleBase(): Promise<void> {
@@ -172,6 +216,17 @@ class GanttMasterSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.defaultWeekStart)
 				.onChange(async (value: 'monday' | 'sunday') => {
 					this.plugin.settings.defaultWeekStart = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Default base folder')
+			.setDesc('Folder to create new .base files in. Leave empty for vault root.')
+			.addText(text => text
+				.setPlaceholder('e.g. Projects')
+				.setValue(this.plugin.settings.baseFolder)
+				.onChange(async (value) => {
+					this.plugin.settings.baseFolder = value;
 					await this.plugin.saveSettings();
 				}));
 

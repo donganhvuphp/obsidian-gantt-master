@@ -45,7 +45,8 @@ function findLeafForEl(app: App, el: HTMLElement): WorkspaceLeaf | null {
 	const leaves = app.workspace.getLeavesOfType('bases');
 	for (const leaf of leaves) {
 		// containerEl is not in public typings but exists at runtime
-		const leafEl = (leaf as any).containerEl as HTMLElement | undefined;
+		// Obsidian internal API — containerEl not exposed in public types
+		const leafEl = (leaf as any).containerEl as HTMLElement | undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
 		if (leafEl && leafEl.contains(el)) return leaf;
 	}
 	return null;
