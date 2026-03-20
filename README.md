@@ -10,6 +10,8 @@
 
 ### Timeline — Because spreadsheets are not Gantt charts
 
+![Timeline View](./example1.png)
+
 A proper Gantt-style timeline that actually lets you *do things*:
 
 - Drag bars to reschedule. Resize edges to adjust dates. Done.
@@ -21,11 +23,15 @@ A proper Gantt-style timeline that actually lets you *do things*:
 
 ### Kanban — Drag. Drop. Ship.
 
+![Kanban View](./example2.png)
+
 Cards grouped by any frontmatter property. Drag between columns to update status — frontmatter writes itself.
 
 Default columns: `todo` → `in-progress` → `review` → `done`. Or use whatever values you want.
 
 ### Table — The spreadsheet that respects your notes
+
+![Table View](./example3.png)
 
 Sortable columns, color-coded rows, click-to-open. Pick up to 8 columns to display, or show everything.
 
